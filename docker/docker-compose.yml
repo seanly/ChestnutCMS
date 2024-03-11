@@ -1,0 +1,119 @@
+version: '3'
+services: 
+  cc-mysql:
+    image: mysql:8.0.32
+    container_name: cc-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=hello1234
+      - TZ=Asia/Shanghai
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/my.cnf
+      
+  cc-redis:
+    image: redis:6.2.13
+    container_name: cc-redis
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - 6379:6379
+    volumes:
+      - "redis-data:/data"
+    command:
+      redis-server --port 6379 --requirepass "b18a03" --appendonly yes
+      
+  cc-minio:
+    image: minio/minio:latest
+    container_name: cc-minio
+    ports:
+      - 9000:9000
+      - 9999:9999
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: "root"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+      MINIO_ACCESS_KEY: minioccadmin
+      MINIO_SECRET_KEY: minioccadmin
+    logging:
+      options:
+        max-size: "50M" # 最大文件上传限制
+        max-file: "10"
+      driver: json-file
+    command: server /data --console-address ":9999"
+    restart: always
+      
+  cc-xxl-job-admin:
+    image: xuxueli/xxl-job-admin:2.4.0
+    restart: unless-stopped
+    container_name: cc-xxl-job-admin
+    ports:                                                
+      - 18080:8080
+    environment:
+      TZ: Asia/Shanghai
+      PARAMS: "--spring.datasource.url=jdbc:mysql://cc-mysql/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai --spring.datasource.username=root --spring.datasource.password=hello1234"
+
+  cc-elasticsearch:
+    image: seanly/chestnutcms:elasticsearch-8.5.2-ik
+    restart: unless-stopped
+    container_name: cc-elasticsearch
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    ports:                                                
+      - 9200:9200                                          
+      - 9300:9300                                         
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms1024m -Xmx1024m
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./elasticsearch/ik-config:/usr/share/elasticsearch/plugins/ik/config
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  chestnutcms-admin:
+    image: seanly/chestnutcms:admin
+    container_name: chestnutcms-cms
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8090
+      SPRING_PROFILES_ACTIVE: prod
+      JVM_OPTS: "-Xms2048M -Xmx2048m -Xmn512m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m"
+    ports:
+      - "8090:8090"
+      - "8899:8899"
+    volumes:
+      - config:/home/app/config/
+      - chestnutcms-data:/home/app/data
+
+  chestnutcms-ui:
+    image: seanly/chestnutcms:ui
+    container_name: chestnutcms-ui
+    restart: unless-stopped
+  
+  tengine:
+    image: seanly/appset:tengine-2.4.1
+    container_name: tengine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+    - ./nginx/vhost:/usr/local/nginx/conf/vhosts
+
+volumes:
+- mysql-data
+- redis-data
+- minio-data
+- elasticsearch-data
+- chestnutcms-data

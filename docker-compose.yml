@@ -1,0 +1,17 @@
+version: "3.0"
+
+services:
+  admin:
+    build:
+      context: ./
+      target: backend
+    image: seanly/chestnutcms:admin
+  ui:
+    build:
+      context: ./
+      target: frontend
+    image: seanly/chestnutcms:ui
+  es:
+    build:
+      context: ./chestnut-modules/chestnut-search/docker/elasticsearch
+    image: seanly/chestnutcms:elasticsearch-8.5.2-ik
