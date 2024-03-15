@@ -94,7 +94,7 @@ services:
       - "8090:8090"
       - "8899:8899"
     volumes:
-      - config:/home/app/config/
+      - ./config:/home/app/config/
       - chestnutcms-data:/home/app/data
 
   chestnutcms-ui:
@@ -112,8 +112,8 @@ services:
     - ./nginx/vhost:/usr/local/nginx/conf/vhosts
 
 volumes:
-- mysql-data
-- redis-data
-- minio-data
-- elasticsearch-data
-- chestnutcms-data
+  mysql-data:
+  redis-data:
+  minio-data:
+  elasticsearch-data:
+  chestnutcms-data:
